@@ -51,6 +51,7 @@ ENV LD_LIBRARY_PATH=/opt/conda/envs/evaluation/lib:$LD_LIBRARY_PATH
 
 # install evaluation specific code
 RUN mkdir /home/someuser/data
+RUN (echo 'from torchvision.datasets import CIFAR10'; echo '_ = CIFAR10(root="/home/someuser/data", download=True)') | python
 # CIFAR10 will be downloaded automatically at runtime if not present
 
 # run evaluation
