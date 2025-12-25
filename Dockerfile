@@ -1,5 +1,6 @@
 #FROM nvidia/cuda:10.2-base
-FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04
+#FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu20.04
+FROM ubuntu:20.04
 
 ENV TZ=Europe/London
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -16,28 +17,40 @@ RUN apt-get install -y wget bzip2 ca-certificates libglib2.0-0 libxext6 libsm6 l
         apt-get clean
 
 ########## DOCKER SETUP START ##########
-RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2020.02-Linux-x86_64.sh -O ~/anaconda.sh && \
-        /bin/bash ~/anaconda.sh -b -p /opt/conda && \
-        rm ~/anaconda.sh && \
-        ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
-        echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
-        find /opt/conda/ -follow -type f -name '*.a' -delete && \
-        find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
-        /opt/conda/bin/conda clean -afy
+#RUN wget --quiet https://repo.anaconda.com/archive/Anaconda3-2020.02-Linux-x86_64.sh -O ~/anaconda.sh && \
+#        /bin/bash ~/anaconda.sh -b -p /opt/conda && \
+#        rm ~/anaconda.sh && \
+#        ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+#        echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+#        find /opt/conda/ -follow -type f -name '*.a' -delete && \
+#        find /opt/conda/ -follow -type f -name '*.js.map' -delete && \
+#        /opt/conda/bin/conda clean -afy
+
+# Install Miniforge (ARM-native) + mamba
+RUN wget -q https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-aarch64.sh \
+    -O /tmp/miniforge.sh && \
+    bash /tmp/miniforge.sh -b -p /opt/conda && \
+    rm /tmp/miniforge.sh && \
+    /opt/conda/bin/conda install -n base -c conda-forge mamba -y && \
+    /opt/conda/bin/conda clean -afy
+
+
 
 # set path to conda
 ENV PATH=/opt/conda/bin:$PATH
 
 # setup conda virtual environment
 COPY ./requirements.yaml /tmp/requirements.yaml
-RUN conda update conda
-RUN conda env create --name evaluation -f /tmp/requirements.yaml
-RUN echo "conda activate evaluation" >> ~/.bashrc
+#RUN conda update conda
+#RUN conda env create --name evaluation -f /tmp/requirements.yaml
+RUN mamba update -n base conda -y
+RUN mamba env create -n evaluation -f /tmp/requirements.yaml
+#RUN echo "conda activate evaluation" >> ~/.bashrc
 
 # setup permissions for non-root user to access necessary files and directories
 RUN chown -R 1000:1000 /opt/conda/pkgs
 RUN useradd someuser -u 1000 --create-home
-RUN mkdir -p /opt/conda/envs/evaluation/lib/python3.7/site-packages/data && chown -R 1000:1000 /opt/conda/envs/evaluation/lib/python3.7/site-packages/data
+RUN mkdir -p /opt/conda/envs/evaluation/lib/python*/site-packages/data && chown -R 1000:1000 /opt/conda/envs/evaluation/lib/python*/site-packages/data
 USER someuser
 
 # setup conda env variables
